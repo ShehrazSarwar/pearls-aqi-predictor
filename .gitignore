@@ -1,0 +1,14 @@
+# --- Python & Environments ---
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env
+.ipynb_checkpoints/
+
+# --- Anaconda ---
+anaconda_projects/
+
+# Ignore the entire PyCharm settings folder
+.idea/
