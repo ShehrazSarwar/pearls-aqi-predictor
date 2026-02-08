@@ -1,11 +1,17 @@
 # 🌍 Automated MLOps for Air Quality: Pearls AQI Predictor
+![Hourly Data](https://github.com/ShehrazSarwar/pearls-aqi-predictor/actions/workflows/hourly_data.yml/badge.svg) ![Daily Training](https://github.com/ShehrazSarwar/pearls-aqi-predictor/actions/workflows/daily_model.yml/badge.svg)
 
 [![Ask DeepWiki](https://devin.ai/assets/askdeepwiki.png)](https://deepwiki.com/ShehrazSarwar/pearls-aqi-predictor)
 
 ## Live Dashboard
 The interactive prediction interface is deployed on Hugging Face Spaces. You can view real-time forecasts and model performance here:
 
-[![Live App](https://img.shields.io/badge/🚀_Live_App-Hugging_Face_Spaces-FFD21E)](https://shehrazsarwar-pearls-aqi-predictor.hf.space)
+[![Live App](https://img.shields.io/badge/🚀_Live_App-Hugging_Face_Spaces-FFD21E)](https://shehrazsarwar-pearls-aqi-predictor.hf.space)  ![App Status](https://img.shields.io/uptimerobot/status/m802311568-4042ffeb7e3e59da40bb521d?style=flat-square&logo=statuspage&label=App%20Status&up_color=brightgreen)
+
+> ### 🛰️ Real-Time Monitoring
+> 
+> 
+> To ensure high availability and prevent the serverless infrastructure from entering "sleep mode," this project utilizes **UptimeRobot** for automated health checks. The system receives a heartbeat every 5 minutes, ensuring the prediction engine remains warm and responsive for end-users while providing instant alerts if the production environment encounters any downtime.
 
 **[Pearls AQI Predictor - Live App](https://shehrazsarwar-pearls-aqi-predictor.hf.space)**
 
