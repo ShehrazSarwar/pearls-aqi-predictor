@@ -2,6 +2,12 @@
 
 [![Ask DeepWiki](https://devin.ai/assets/askdeepwiki.png)](https://deepwiki.com/ShehrazSarwar/pearls-aqi-predictor)
 
+## Live Dashboard
+The interactive prediction interface is deployed on Hugging Face Spaces. You can view real-time forecasts and model performance here:
+
+[![Live App](https://img.shields.io/badge/🚀_Live_App-Hugging_Face_Spaces-FFD21E)](https://shehrazsarwar-pearls-aqi-predictor.hf.space)
+
+**[Pearls AQI Predictor - Live App](https://shehrazsarwar-pearls-aqi-predictor.hf.space)**
 
 ## 📝 Introduction
 
@@ -55,6 +61,8 @@ pearls-aqi-predictor/
 │   └── workflows/
 │       ├── daily_model.yml             # Orchestrates model training and promotion every 24h
 │       └── hourly_data.yml            # Orchestrates feature pipeline runs every hour
+├── app/
+│   └── aqi_multi_output_model.pkl     # Streamlit app
 ├── .gitignore
 ├── AQI_predict.pdf
 ├── automation_scripts/                 # Pipeline entry points for automation
@@ -132,16 +140,17 @@ You can run the pipelines manually from your local machine.
     ```bash
     python automation_scripts/daily_model_pipeline.py
     ```
-## 🏁 Conclusion & Future Roadmap
+
+## 🏁 Conclusion
 
 This project demonstrates a robust, production-ready MLOps architecture for environmental forecasting. By decoupling data ingestion from model retraining, the system ensures high data availability and continuous model improvement without manual intervention. The integration of **SHAP** for interpretability and **MLflow** for lifecycle management elevates it from a simple script to a professional machine learning service.
 
-> **🚧 Project Status:** This project is currently in **active development**. While the backend automation and MLOps pipelines are fully functional, the **interactive web application** (Streamlit/Gradio dashboard) is currently being developed to provide a user-friendly interface for real-time predictions.
+> **✅ Project Status: Production Ready.** The backend automation, MLOps pipelines, and interactive Streamlit dashboard are fully functional. The system is currently delivering real-time AQI forecasts for Karachi with automated daily model updates.
+
 
 ## 👤 Author & Credits
 
 Developed with ❤️ by **Shehraz Sarwar Ghouri** as part of the **10Pearls Shine Program 2026 (Cohort 7)** - *Data Science*.
-
 
 * **LinkedIn:** [Shehraz Sarwar](https://www.linkedin.com/in/shehraz-sarwar-ghouri-321394247/)
 * **Program:** 10Pearls Shine Internship
