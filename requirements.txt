@@ -11,3 +11,8 @@ lightgbm
 mlflow
 dagshub
 openmeteo_requests
+streamlit
+mlflow-skinny
+matplotlib
+joblib
+tensorflow
