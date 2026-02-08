@@ -23,7 +23,9 @@ openmeteo = openmeteo_requests.Client(session=retry_session)
 
 def fetch_raw_data(days=730):
     lat, lon = 24.8607, 67.0011
-    end_date = datetime.now(timezone.utc).date()
+    # Use UTC for the API request boundaries
+    now_utc_now = datetime.now(timezone.utc)
+    end_date = now_utc_now.date()
     start_date = end_date - timedelta(days=days)
 
     params = {
@@ -51,11 +53,8 @@ def fetch_raw_data(days=730):
                                                                                                                "dust"]})[
         0]
 
-    # Get hourly data blocks
     h_w = w_resp.Hourly()
 
-    # 1. Create the datetime range as native pandas objects
-    # This allows you to keep 'datetime' as a proper timestamp in the df
     time_range = pd.date_range(
         start=pd.to_datetime(h_w.Time(), unit="s", utc=True),
         end=pd.to_datetime(h_w.TimeEnd(), unit="s", utc=True),
@@ -63,7 +62,6 @@ def fetch_raw_data(days=730):
         inclusive="left"
     )
 
-    # 2. Store it as it is in the df (as native timestamps)
     df = pd.DataFrame({
         "datetime": time_range,
         "temperature": h_w.Variables(0).ValuesAsNumpy(),
@@ -82,14 +80,12 @@ def fetch_raw_data(days=730):
     return df
 
 
-from datetime import timezone
-
 if __name__ == "__main__":
+    now_utc = datetime.now(timezone.utc)
+
     # Check if we already have data
     count = raw_collection.count_documents({})
 
-    # If DB is empty, fetch 2 years (730 days)
-    # If DB has data, just fetch last 3 days to get the newest hour
     days_to_fetch = 730 if count == 0 else 3
 
     print(f"Database has {count} records. Fetching last {days_to_fetch} days...")
@@ -97,37 +93,40 @@ if __name__ == "__main__":
 
     df_for_mongo = raw_df.copy()
 
-    # 1. Fetch existing times and force them to be UTC ISO strings
     print("Standardizing database timestamps...")
     existing_times = set()
     for dt in raw_collection.distinct("datetime"):
-        # Force every DB date to UTC and standard string format
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         existing_times.add(dt.astimezone(timezone.utc).isoformat())
 
-    # 2. Filter new records using the exact same standard
+    # 2. Filter new records (Must be NOT in DB AND NOT in the future)
     records_to_insert = []
     for record in df_for_mongo.to_dict("records"):
         dt_obj = record["datetime"]
-        # Ensure new data is also UTC
         if dt_obj.tzinfo is None:
             dt_obj = dt_obj.replace(tzinfo=timezone.utc)
 
-        current_time_iso = dt_obj.astimezone(timezone.utc).isoformat()
+        current_time_iso = dt_obj.isoformat()
 
-        if current_time_iso not in existing_times:
-            # Important: Keep the datetime object for MongoDB insertion
-            record["datetime"] = dt_obj.astimezone(timezone.utc)
+        # LOGIC: Only add if it's new AND its timestamp has actually passed
+        if current_time_iso not in existing_times and dt_obj <= now_utc:
+            record["datetime"] = dt_obj
             records_to_insert.append(record)
 
-    # 3. Insert only the truly new records
     if records_to_insert:
         raw_collection.insert_many(records_to_insert)
         print(f"Success! Added {len(records_to_insert)} NEW records.")
     else:
         print("Everything is up to date. 0 records added.")
 
-    # Check the most recent record in your DB
+    # 3. Final Print in PKT
     last_record = raw_collection.find_one(sort=[("datetime", -1)])
-    print(f"The most recent data in the DB is from: {last_record['datetime']}")
+    if last_record:
+        last_dt = last_record['datetime']
+        if last_dt.tzinfo is None:
+            last_dt = last_dt.replace(tzinfo=timezone.utc)
+
+        # Convert UTC to PKT for the console log
+        pkt_time = last_dt + timedelta(hours=5)
+        print(f"The most recent data in the DB is from: {pkt_time.strftime('%Y-%m-%d %I:%M:%S %p')} (PKT)")
