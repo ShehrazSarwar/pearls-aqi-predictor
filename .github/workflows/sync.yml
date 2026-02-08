@@ -8,11 +8,20 @@ jobs:
   sync-to-hub:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
-          lfs: true # <--- THIS IS CRUCIAL
+          lfs: true
+
+      - name: Install Git LFS
+        run: git lfs install
+
+      - name: Fetch LFS files
+        run: git lfs pull
+
       - name: Push to hub
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: git push --force https://ShehrazSarwar:$HF_TOKEN@huggingface.co/spaces/ShehrazSarwar/pearls-aqi-predictor main
+        run: |
+          git push --force https://ShehrazSarwar:$HF_TOKEN@huggingface.co/spaces/ShehrazSarwar/pearls-aqi-predictor main
