@@ -5,7 +5,7 @@
 
 ## 📝 Introduction
 
-This repository implements a production-grade, end-to-end MLOps ecosystem designed to forecast PM2.5 concentrations in Karachi, Pakistan. By integrating real-time environmental data with automated machine learning workflows, the system provides reliable **24, 48, and 72-hour air quality horizons**.
+This repository implements a production-style, end-to-end MLOps ecosystem designed to forecast PM2.5 concentrations in Karachi, Pakistan. By integrating real-time environmental data with automated machine learning workflows, the system provides reliable **24, 48, and 72-hour air quality horizons**.
 
 Built for scalability and resilience, the architecture leverages a **serverless stack** using GitHub Actions for orchestration, MongoDB Atlas as a high-performance Feature Store, and MLflow (via DagsHub) for comprehensive experiment tracking and a **"Champion vs. Challenger"** model registry. This setup ensures that the system doesn't just predict air quality, but continuously evolves and optimizes its accuracy without manual intervention.
 ## Key Features
@@ -65,8 +65,6 @@ pearls-aqi-predictor/
 │   └── aqi_multi_output_model.pkl      # Serialized production model artifact
 ├── notebooks/                          # Research and Interpretability
 │   ├── exploratory_data_analysis.ipynb # EDA to identify trends and patterns
-│   ├── models/
-│   │   └── aqi_multi_output_model.pkl
 │   └── SHAP_feature_importance.ipynb   # Global and local model explainability
 ├── requirements.txt                    # Project dependencies
 ├── scripts/                            # Core Logic Modules
@@ -76,8 +74,6 @@ pearls-aqi-predictor/
 │   ├── model_train.py                 # Core model training and evaluation logic
 │   └── promote_model.py               # Champion vs. Challenger promotion logic
 ├── test_notebooks/
-│   ├── models/
-│   │   └── aqi_multi_output_model.pkl
 │   ├── Predict_AQI.ipynb
 │   └── trained_model_validation.ipynb
 └── test_scripts/                       # Experimental Development
@@ -106,6 +102,7 @@ pearls-aqi-predictor/
 2.  **Install dependencies:**
     ```bash
     pip install -r requirements.txt
+    pip install -r requirements-ci.txt
     ```
 
 3.  **Set up environment variables:**
