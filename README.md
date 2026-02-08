@@ -95,7 +95,7 @@ pearls-aqi-predictor/
 
 ### Prerequisites
 
-*   Python 3.12 or later
+*   Python
 *   A MongoDB database instance
 *   A DagsHub account for MLflow tracking (or another MLflow server)
 
