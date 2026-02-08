@@ -1,4 +1,3 @@
-
 # 🌍 Automated MLOps for Air Quality: Pearls AQI Predictor
 
 [![Ask DeepWiki](https://devin.ai/assets/askdeepwiki.png)](https://deepwiki.com/ShehrazSarwar/pearls-aqi-predictor)
