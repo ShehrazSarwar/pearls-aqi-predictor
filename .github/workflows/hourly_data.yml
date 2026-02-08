@@ -2,7 +2,7 @@ name: Hourly Data Pipeline
 
 on:
   schedule:
-    - cron: '0 * * * *'  # Runs at the start of every hour
+    - cron: '5 * * * *'  # Runs at the start of every hour
   workflow_dispatch:      # Allows to run it manually for testing
 
 jobs:
