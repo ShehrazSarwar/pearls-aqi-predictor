@@ -643,7 +643,7 @@ def main():
                 col1, col2 = st.columns(2)
 
                 with col1:
-                    if st.button("⬆️ Update Now", use_container_width=True, type="primary"):
+                    if st.button("⬆️ Update Now", width='stretch', type="primary"):
                         with st.spinner("Updating model..."):
                             st.cache_resource.clear()
                             st.session_state.update_available = False
@@ -651,7 +651,7 @@ def main():
                             st.rerun()
 
                 with col2:
-                    if st.button("⏭️ Skip", use_container_width=True):
+                    if st.button("⏭️ Skip", width='stretch'):
                         st.session_state.update_available = False
                         st.rerun()
             else:
@@ -660,7 +660,7 @@ def main():
         st.markdown("---")
 
         # Manual refresh button
-        if st.button("🔄 Refresh Model", use_container_width=True):
+        if st.button("🔄 Refresh Model", width='stretch'):
             st.cache_resource.clear()
             st.rerun()
 
@@ -685,7 +685,7 @@ def main():
     st.markdown("### 📍 Latest Air Quality Analysis")
 
     # Prediction button
-    if st.button("🚀 Generate AI Forecast", use_container_width=True, type="primary"):
+    if st.button("🚀 Generate AI Forecast", width='stretch', type="primary"):
 
         with st.spinner("🔄 Fetching data from MongoDB..."):
             try:
@@ -816,7 +816,7 @@ def main():
         # Interactive Plotly Visualization
         st.markdown("### 📈 Interactive AQI Trend Analysis")
         fig = create_aqi_chart_plotly(plot_dates, aqi_values, types)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
         # Detailed information tabs
         tab1, tab2, tab3, tab4 = st.tabs(
@@ -829,7 +829,7 @@ def main():
             report_df = create_download_dataframe(plot_dates, aqi_values, types, forecast_pm25)
 
             # Display the dataframe
-            st.dataframe(report_df, use_container_width=True, hide_index=True)
+            st.dataframe(report_df, width='stretch', hide_index=True)
 
             # Download button
             st.markdown("---")
@@ -845,7 +845,7 @@ def main():
                     data=csv_data,
                     file_name=f"AQI_7Day_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
                     mime="text/csv",
-                    use_container_width=True
+                    width='stretch'
                 )
 
         with tab2:
@@ -895,14 +895,14 @@ def main():
                 'PM2.5 (μg/m³)': [f"{pm:.2f}" for pm in forecast_pm25],
                 'AQI': [aqi_values[4], aqi_values[5], aqi_values[6]]
             })
-            st.dataframe(pred_df, use_container_width=True, hide_index=True)
+            st.dataframe(pred_df, width='stretch', hide_index=True)
 
         with tab4:
             st.markdown("#### Environmental Parameters - Historical Overview")
 
             # Create interactive historical chart
             hist_chart = create_historical_overview_chart(hist_df)
-            st.plotly_chart(hist_chart, use_container_width=True)
+            st.plotly_chart(hist_chart, width='stretch')
 
             # Summary statistics
             st.markdown("---")
