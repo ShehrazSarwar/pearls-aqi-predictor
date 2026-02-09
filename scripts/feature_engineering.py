@@ -87,15 +87,18 @@ def run_feature_engineering():
     df["target_h48"] = df["pm2_5"].shift(-48)
     df["target_h72"] = df["pm2_5"].shift(-72)
 
-    # Drop rows that don't have future targets
-    df.dropna(subset=["target_h24", "target_h48", "target_h72"], inplace=True)
-
-    # List of columns to clean (exclude targets)
-    exclude_cols = ["target_h24", "target_h48", "target_h72", "datetime"]
+    target_cols = ["target_h24", "target_h48", "target_h72"]
+    exclude_cols = target_cols + ["datetime"]
     feature_cols = [c for c in df.columns if c not in exclude_cols]
 
-    # Clean everything in one shot
-    df[feature_cols] = df[feature_cols].ffill().bfill()
+    # Fill middle gaps using forward fill first
+    df[feature_cols] = df[feature_cols].ffill()
+
+    # Drop the starting rows where lags couldn't be calculated
+    df.dropna(subset=["pm25_lag_48h"], inplace=True)
+
+    # Final backfill for any remaining stray NaNs
+    df[feature_cols] = df[feature_cols].bfill()
 
     if not is_empty:
         update_threshold = datetime.now(timezone.utc) - timedelta(days=14)
