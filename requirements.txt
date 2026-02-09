@@ -12,5 +12,5 @@ dagshub
 cloudpickle
 plotly
 psutil==7.0.0
-pyarrow==20.0.0
+pyarrow>=21.0.0
 scipy==1.15.3
