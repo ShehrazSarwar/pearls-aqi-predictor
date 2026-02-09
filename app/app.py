@@ -3,18 +3,20 @@ import streamlit as st
 import mlflow
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 from pymongo import MongoClient
 from dotenv import load_dotenv
 import warnings
+import io
 
 warnings.filterwarnings('ignore')
 
 # Load Environment Variables
 load_dotenv()
 
-# --- CONFIGURATION ---
+# CONFIGURATION
 os.environ["MLFLOW_TRACKING_USERNAME"] = os.getenv("MLFLOW_TRACKING_USERNAME", "")
 os.environ["MLFLOW_TRACKING_PASSWORD"] = os.getenv("MLFLOW_TRACKING_PASSWORD", "")
 os.environ["MLFLOW_TRACKING_URI"] = os.getenv("MLFLOW_TRACKING_URI", "")
@@ -27,7 +29,7 @@ DB_NAME = os.getenv("DB_NAME", "aqi_predictor")
 RAW_COLLECTION = "raw_data"
 FEATURE_COLLECTION = "feature_store"
 
-# --- PAGE SETTINGS ---
+# PAGE SETTINGS
 st.set_page_config(
     page_title="AQI Forecast Dashboard",
     layout="wide",
@@ -35,7 +37,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- MODERN CSS STYLING ---
+# MODERN CSS STYLING
 st.markdown("""
     <style>
     /* Main container styling */
@@ -191,34 +193,28 @@ st.markdown("""
         border-left-width: 5px;
     }
 
-    /* Data table */
-    .dataframe {
-        border: none !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    }
-
-    .dataframe thead tr th {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-        color: white !important;
+    /* Download button styling */
+    .stDownloadButton > button {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        border: none;
+        padding: 0.75rem 2rem;
+        border-radius: 8px;
         font-weight: 600;
-        padding: 12px !important;
+        font-size: 1rem;
+        transition: all 0.3s;
+        box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);
     }
 
-    .dataframe tbody tr:hover {
-        background-color: #f8f9fa !important;
-    }
-
-    /* Dark theme table */
-    @media (prefers-color-scheme: dark) {
-        .dataframe tbody tr:hover {
-            background-color: #2d3748 !important;
-        }
+    .stDownloadButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(16, 185, 129, 0.4);
     }
     </style>
 """, unsafe_allow_html=True)
 
 
-# --- CACHED MODEL LOADING WITH AUTO-UPDATE ---
+# CACHED MODEL LOADING WITH AUTO-UPDATE
 @st.cache_resource(show_spinner=False)
 def load_champion_model():
     """Loads the model from MLflow Registry with error handling."""
@@ -261,7 +257,7 @@ def check_for_model_updates(current_version):
         return False, current_version, str(e)
 
 
-# --- UTILITY FUNCTIONS ---
+# UTILITY FUNCTIONS
 def calculate_aqi(pm25):
     """Calculate AQI from PM2.5 concentration using EPA formula."""
     if pm25 < 0:
@@ -292,84 +288,316 @@ def get_aqi_info(aqi_val):
                 "😷 Members of sensitive groups may experience health effects. Wear a mask if needed.")
     elif aqi_val <= 200:
         return (
-        "Unhealthy", "#ff0000", "🏠 Everyone may experience health effects. Reduce prolonged outdoor activities.")
+            "Unhealthy", "#ff0000", "🏠 Everyone may experience health effects. Reduce prolonged outdoor activities.")
     elif aqi_val <= 300:
         return ("Very Unhealthy", "#8f3f97", "🚨 Health alert: Everyone should avoid all outdoor physical activity.")
     else:
         return ("Hazardous", "#7e0023", "☢️ Emergency conditions. Stay indoors with air purification systems.")
 
 
-def create_aqi_chart(plot_dates, aqi_values, types):
-    """Create a beautiful AQI visualization chart."""
-    # Set style
-    plt.style.use('seaborn-v0_8-darkgrid')
-    fig, ax = plt.subplots(figsize=(14, 7), facecolor='white')
+def create_aqi_chart_plotly(plot_dates, aqi_values, types):
+    """An interactive AQI visualization chart using Plotly."""
 
-    # Background AQI bands
-    ax.axhspan(0, 50, color='#00e400', alpha=0.08, label='Good')
-    ax.axhspan(51, 100, color='#ffff00', alpha=0.08, label='Moderate')
-    ax.axhspan(101, 150, color='#ff7e00', alpha=0.08, label='Unhealthy (Sensitive)')
-    ax.axhspan(151, 200, color='#ff0000', alpha=0.08, label='Unhealthy')
-    ax.axhspan(201, 300, color='#8f3f97', alpha=0.08, label='Very Unhealthy')
-    ax.axhspan(301, 500, color='#7e0023', alpha=0.08, label='Hazardous')
+    # Convert datetime objects to ensure compatibility
+    plot_dates = [pd.Timestamp(d) if not isinstance(d, pd.Timestamp) else d for d in plot_dates]
 
-    # Vertical line separating observed and predicted
+    # Create figure with better styling
+    fig = go.Figure()
+
+    # Add AQI category background bands with improved styling
+    aqi_bands = [
+        (0, 50, '#00e676', 'Good'),  # Bright Green
+        (51, 100, '#ffd54f', 'Moderate'),  # Yellow
+        (101, 150, '#ff9800', 'Unhealthy (Sensitive)'),  # Orange
+        (151, 200, '#f44336', 'Unhealthy'),  # Red
+        (201, 300, '#9c27b0', 'Very Unhealthy'),  # Purple
+        (301, 500, '#6d1b7b', 'Hazardous')  # Dark Purple
+    ]
+
+    for low, high, color, label in aqi_bands:
+        fig.add_hrect(
+            y0=low, y1=high,
+            fillcolor=color,
+            opacity=0.12,
+            layer="below",
+            line_width=0,
+            annotation_text=label,
+            annotation_position="right",
+            annotation=dict(
+                font_size=11,
+                font_color=color,
+                font_family='Arial, sans-serif'
+            )
+        )
+
+    # Add vertical line separating observed and predicted
     separator_idx = types.index("Predicted") if "Predicted" in types else len(types)
     if separator_idx < len(plot_dates):
-        ax.axvline(x=plot_dates[separator_idx], color='gray', linestyle='--',
-                   linewidth=2, alpha=0.5, label='Forecast Boundary')
+        # Use shapes instead of add_vline to avoid datetime arithmetic issues
+        fig.add_shape(
+            type="line",
+            x0=plot_dates[separator_idx],
+            x1=plot_dates[separator_idx],
+            y0=0,
+            y1=1,
+            yref="paper",
+            line=dict(color="#78909c", width=3, dash="dash"),
+            opacity=0.6
+        )
+        # Add annotation separately
+        fig.add_annotation(
+            x=plot_dates[separator_idx],
+            y=1,
+            yref="paper",
+            text="◆ Forecast Starts",
+            showarrow=False,
+            yshift=15,
+            font=dict(size=12, color="#455a64", family='Arial, sans-serif', weight='bold'),
+            bgcolor="rgba(255,255,255,0.9)",
+            bordercolor="#78909c",
+            borderwidth=2,
+            borderpad=4
+        )
 
-    # Main trend line
-    ax.plot(plot_dates, aqi_values, color='#2c3e50', linewidth=2.5,
-            alpha=0.7, zorder=3)
+    # Split data into observed and predicted
+    observed_dates = [d for d, t in zip(plot_dates, types) if t == "Observed"]
+    observed_aqi = [a for a, t in zip(aqi_values, types) if t == "Observed"]
+    predicted_dates = [d for d, t in zip(plot_dates, types) if t == "Predicted"]
+    predicted_aqi = [a for a, t in zip(aqi_values, types) if t == "Predicted"]
 
-    # Data points with category colors
-    for i, (date, aqi, dtype) in enumerate(zip(plot_dates, aqi_values, types)):
-        _, color, _ = get_aqi_info(aqi)
-        marker = 'o' if dtype == "Observed" else 'D'
-        size = 200 if dtype == "Observed" else 250
+    # Add main trend line (observed) with gradient effect
+    if observed_dates:
+        fig.add_trace(go.Scatter(
+            x=observed_dates,
+            y=observed_aqi,
+            mode='lines+markers',
+            name='Observed',
+            line=dict(color='#1e88e5', width=4, shape='spline'),
+            marker=dict(
+                size=14,
+                color=[get_aqi_info(a)[1] for a in observed_aqi],
+                line=dict(color='white', width=3),
+                symbol='circle'
+            ),
+            fill='tozeroy',
+            fillcolor='rgba(30, 136, 229, 0.08)',
+            hovertemplate='<b>📅 %{x|%b %d, %Y}</b><br>🌡️ AQI: <b>%{y}</b><br>📊 %{text}<extra></extra>',
+            text=[get_aqi_info(a)[0] for a in observed_aqi]
+        ))
 
-        ax.scatter(date, aqi, color=color, s=size, edgecolors='white',
-                   linewidth=2, zorder=5, marker=marker, alpha=0.9)
+    # Add predicted trend line with different styling
+    if predicted_dates:
+        # Connect last observed to first predicted
+        connect_dates = [observed_dates[-1], predicted_dates[0]] if observed_dates else predicted_dates
+        connect_aqi = [observed_aqi[-1], predicted_aqi[0]] if observed_aqi else predicted_aqi
 
-        # Value labels
-        ax.annotate(f'{aqi}', (date, aqi), xytext=(0, 15),
-                    textcoords='offset points', ha='center',
-                    fontweight='bold', fontsize=10,
-                    bbox=dict(boxstyle='round,pad=0.3', facecolor='white',
-                              edgecolor='gray', alpha=0.8))
+        fig.add_trace(go.Scatter(
+            x=connect_dates + predicted_dates[1:],
+            y=connect_aqi + predicted_aqi[1:],
+            mode='lines+markers',
+            name='Predicted',
+            line=dict(color='#7b1fa2', width=4, dash='dot', shape='spline'),
+            marker=dict(
+                size=16,
+                symbol='diamond',
+                color=[get_aqi_info(a)[1] for a in connect_aqi + predicted_aqi[1:]],
+                line=dict(color='white', width=3)
+            ),
+            fill='tozeroy',
+            fillcolor='rgba(123, 31, 162, 0.08)',
+            hovertemplate='<b>📅 %{x|%b %d, %Y}</b><br>🔮 Forecast AQI: <b>%{y}</b><br>📊 %{text}<extra></extra>',
+            text=[get_aqi_info(a)[0] for a in connect_aqi + predicted_aqi[1:]]
+        ))
 
-    # Formatting
-    ax.set_xlabel('Date', fontsize=12, fontweight='600', color='#2c3e50')
-    ax.set_ylabel('AQI Index', fontsize=12, fontweight='600', color='#2c3e50')
-    ax.set_title('Air Quality Index - Historical & Forecast Trend',
-                 fontsize=16, fontweight='700', color='#2c3e50', pad=20)
+    # Update layout with modern styling
+    fig.update_layout(
+        title={
+            'text': '🌬️ Air Quality Index - Historical & Forecast Trend',
+            'x': 0.5,
+            'xanchor': 'center',
+            'font': {'size': 24, 'color': '#1a237e', 'family': 'Arial, sans-serif', 'weight': 'bold'}
+        },
+        xaxis_title='Date',
+        yaxis_title='AQI Index',
+        hovermode='x unified',
+        plot_bgcolor='#fafafa',
+        paper_bgcolor='white',
+        height=550,
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1,
+            bgcolor="rgba(255,255,255,0.95)",
+            bordercolor="#90a4ae",
+            borderwidth=2,
+            font=dict(size=12, family='Arial, sans-serif')
+        ),
+        xaxis=dict(
+            showgrid=True,
+            gridcolor='rgba(0,0,0,0.06)',
+            tickformat='%b %d\n%a',
+            tickfont=dict(size=11, color='#37474f', family='Arial, sans-serif'),
+            linecolor='#cfd8dc',
+            linewidth=2
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor='rgba(0,0,0,0.08)',
+            range=[0, max(aqi_values) + 50],
+            tickfont=dict(size=11, color='#37474f', family='Arial, sans-serif'),
+            linecolor='#cfd8dc',
+            linewidth=2,
+            zeroline=True,
+            zerolinecolor='rgba(0,0,0,0.1)',
+            zerolinewidth=2
+        ),
+        font=dict(family="Arial, sans-serif", size=12, color='#263238')
+    )
 
-    # X-axis formatting
-    ax.set_xticks(plot_dates)
-    ax.set_xticklabels([d.strftime('%b %d\n%a') for d in plot_dates],
-                       fontsize=10, fontweight='500')
-
-    # Y-axis formatting
-    ax.set_ylim(0, max(aqi_values) + 50)
-    ax.yaxis.grid(True, linestyle='--', alpha=0.3)
-    ax.xaxis.grid(False)
-
-    # Legend
-    legend_elements = [
-        plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='#2c3e50',
-                   markersize=10, label='Observed', markeredgecolor='white', markeredgewidth=2),
-        plt.Line2D([0], [0], marker='D', color='w', markerfacecolor='#2c3e50',
-                   markersize=10, label='Predicted', markeredgecolor='white', markeredgewidth=2)
-    ]
-    ax.legend(handles=legend_elements, loc='upper left', fontsize=10,
-              framealpha=0.9, edgecolor='gray')
-
-    plt.tight_layout()
     return fig
 
 
-# --- MAIN APP ---
+def create_historical_overview_chart(hist_df):
+    """Create multi-parameter historical overview chart."""
+
+    # Map column names from database to display names
+    column_mapping = {
+        'temperature': 'temp',
+        'humidity': 'rh',
+        'wind_speed': 'ws',
+        'pressure': 'pres'
+    }
+
+    # Rename columns if they exist in old format
+    for old_name, new_name in column_mapping.items():
+        if old_name in hist_df.columns and new_name not in hist_df.columns:
+            hist_df[new_name] = hist_df[old_name]
+
+    # Create subplots with better styling - 2x2 grid for 4 parameters
+    fig = make_subplots(
+        rows=2, cols=2,
+        subplot_titles=('PM2.5 Concentration', 'PM10 Concentration',
+                        'Temperature', 'Humidity'),
+        vertical_spacing=0.15,
+        horizontal_spacing=0.12,
+        specs=[[{"secondary_y": False}, {"secondary_y": False}],
+               [{"secondary_y": False}, {"secondary_y": False}]]
+    )
+
+    # Define parameters with modern, vibrant colors and their RGBA equivalents
+    params = [
+        ('pm2_5', 'PM2.5 (μg/m³)', '#FF6B6B', 'rgba(255, 107, 107, 0.15)', 1, 1),  # Coral Red
+        ('pm10', 'PM10 (μg/m³)', '#4ECDC4', 'rgba(78, 205, 196, 0.15)', 1, 2),  # Turquoise
+        ('temp', 'Temperature (°C)', '#45B7D1', 'rgba(69, 183, 209, 0.15)', 2, 1),  # Sky Blue
+        ('rh', 'Humidity (%)', '#96CEB4', 'rgba(150, 206, 180, 0.15)', 2, 2)  # Mint Green
+    ]
+
+    for param, label, color, fill_color, row, col in params:
+        if param in hist_df.columns:
+            # Create gradient effect with area fill
+            fig.add_trace(
+                go.Scatter(
+                    x=hist_df['datetime'],
+                    y=hist_df[param],
+                    mode='lines',
+                    name=label,
+                    line=dict(color=color, width=3, shape='spline'),
+                    fill='tozeroy',
+                    fillcolor=fill_color,
+                    showlegend=False,
+                    hovertemplate='<b>%{x|%b %d, %H:%M}</b><br>' + f'{label}: %{{y:.2f}}<extra></extra>'
+                ),
+                row=row, col=col
+            )
+
+            # Add subtle trend line
+            if len(hist_df) > 10:
+                # Calculate simple moving average for trend
+                window = min(24, len(hist_df) // 4)
+                trend = hist_df[param].rolling(window=window, center=True).mean()
+
+                fig.add_trace(
+                    go.Scatter(
+                        x=hist_df['datetime'],
+                        y=trend,
+                        mode='lines',
+                        line=dict(color=color, width=2, dash='dot'),
+                        showlegend=False,
+                        hovertemplate='<b>Trend</b><br>%{y:.2f}<extra></extra>',
+                        opacity=0.6
+                    ),
+                    row=row, col=col
+                )
+
+    # layout
+    fig.update_layout(
+        height=700,
+        showlegend=False,
+        title={
+            'text': "Historical Environmental Parameters (Past 7 Days)",
+            'x': 0.5,
+            'xanchor': 'center',
+            'font': {'size': 22, 'color': '#2c3e50', 'family': 'Arial, sans-serif', 'weight': 'bold'}
+        },
+        plot_bgcolor='#f8f9fa',
+        paper_bgcolor='white',
+        hovermode='x unified',
+        font=dict(family="Arial, sans-serif", size=12, color='#2c3e50')
+    )
+
+    # subplot titles
+    for annotation in fig['layout']['annotations']:
+        annotation['font'] = dict(size=14, color='#34495e', family='Arial, sans-serif', weight='bold')
+
+    # axes with better styling
+    fig.update_xaxes(
+        showgrid=True,
+        gridcolor='rgba(0,0,0,0.05)',
+        tickfont=dict(size=10, color='#5a6c7d'),
+        linecolor='#cbd5e0',
+        linewidth=1
+    )
+    fig.update_yaxes(
+        showgrid=True,
+        gridcolor='rgba(0,0,0,0.08)',
+        tickfont=dict(size=10, color='#5a6c7d'),
+        linecolor='#cbd5e0',
+        linewidth=1,
+        zeroline=True,
+        zerolinecolor='rgba(0,0,0,0.1)',
+        zerolinewidth=1
+    )
+
+    return fig
+
+
+def create_download_dataframe(plot_dates, aqi_values, types, forecast_pm25=None):
+    """Create comprehensive dataframe for download."""
+    # Convert to pandas Timestamp if not already
+    plot_dates_ts = [pd.Timestamp(d) if not isinstance(d, pd.Timestamp) else d for d in plot_dates]
+
+    df = pd.DataFrame({
+        'Date': [d.strftime('%Y-%m-%d') for d in plot_dates_ts],
+        'Day': [d.strftime('%A') for d in plot_dates_ts],
+        'Time': [d.strftime('%H:%M:%S') for d in plot_dates_ts],
+        'AQI': aqi_values,
+        'Category': [get_aqi_info(a)[0] for a in aqi_values],
+        'Type': types,
+        'Health_Recommendation': [get_aqi_info(a)[2] for a in aqi_values]
+    })
+
+    # Add PM2.5 values for predicted days if available
+    if forecast_pm25 is not None:
+        pm25_values = [None] * (len(plot_dates) - len(forecast_pm25)) + list(forecast_pm25)
+        df['PM2.5_Forecast'] = pm25_values
+
+    return df
+
+
+# MAIN APP
 def main():
     # Initialize session state for update tracking
     if 'update_checked' not in st.session_state:
@@ -387,7 +615,6 @@ def main():
 
     # Sidebar
     with st.sidebar:
-        # st.image("https://img.icons8.com/clouds/200/air-quality.png", width=150)
         st.markdown("### 🎯 System Status")
 
         # Load model
@@ -403,7 +630,7 @@ def main():
             st.info(f"**Version:** v{version}")
             st.info(f"**Registry:** DagsHub MLflow")
 
-            # Auto-check for model updates on every app load (fast, just version comparison)
+            # Auto-check for model updates on every app load
             if not st.session_state.update_checked:
                 has_update, new_version, update_error = check_for_model_updates(version)
                 st.session_state.update_checked = True
@@ -443,9 +670,11 @@ def main():
         This dashboard provides:
         - **Real-time** air quality monitoring
         - **AI-powered** 3-day forecasts
-        - **Auto-update** model detection on every load
+        - **Interactive** Plotly visualizations
+        - **Auto-update** model detection
         - **Health recommendations** based on AQI levels
         - **Historical trend** analysis
+        - **Downloadable** reports
         """)
 
         st.markdown("---")
@@ -464,8 +693,8 @@ def main():
                 client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
                 db = client[DB_NAME]
 
-                # Fetch historical data
-                history = list(db[RAW_COLLECTION].find().sort("datetime", -1).limit(96))
+                # Fetch historical data (7 days)
+                history = list(db[RAW_COLLECTION].find().sort("datetime", -1).limit(168))  # 7 days hourly
                 if not history:
                     st.error("❌ No historical data found in database")
                     client.close()
@@ -507,29 +736,33 @@ def main():
         # Process results
         plot_dates, aqi_values, types = [], [], []
 
-        # Past 4 days (Observed)
+        # Past 3 days + today (Observed) - total 4 days
+        # Day -3, -2, -1, and 0 (today)
         for d in [3, 2, 1, 0]:
             t_date = (present_time - timedelta(days=d)).date()
             day_data = hist_df[hist_df['datetime'].dt.date == t_date]
             avg_pm = day_data['pm2_5'].mean() if not day_data.empty else 0
             aqi = calculate_aqi(avg_pm)
-            plot_dates.append(datetime.combine(t_date, datetime.min.time()))
+            # Convert to pandas Timestamp for consistency
+            plot_dates.append(pd.Timestamp(datetime.combine(t_date, datetime.min.time())))
             aqi_values.append(aqi)
             types.append("Observed")
 
-        # Next 3 days (Predicted)
-        for i, h in enumerate([24, 48, 72]):
-            f_dt = present_time + timedelta(hours=h)
+        # Next 3 days (Predicted) - starting from tomorrow
+        # Tomorrow (+1 day), Day after (+2 days), Third day (+3 days)
+        for i, days_ahead in enumerate([1, 2, 3]):
+            f_dt = present_time + timedelta(days=days_ahead)
             aqi = calculate_aqi(forecast_pm25[i])
-            plot_dates.append(f_dt)
+            # Convert to pandas Timestamp for consistency
+            plot_dates.append(pd.Timestamp(f_dt))
             aqi_values.append(aqi)
             types.append("Predicted")
 
-        # --- DISPLAY RESULTS ---
+        # DISPLAY RESULTS
         st.success("✅ Analysis Complete!")
 
-        # Current status card
-        cur_aqi = aqi_values[3]  # Today's observed
+        # Current status card (today's AQI - last observed point)
+        cur_aqi = aqi_values[3]  # Today's observed (index 3: day 0)
         cat_name, cat_color, rec = get_aqi_info(cur_aqi)
 
         st.markdown(f"""
@@ -548,58 +781,72 @@ def main():
         with col1:
             cur_aqi_cat = get_aqi_info(cur_aqi)[0]
             st.metric(
-                label="Current AQI",
+                label="Today's AQI",
                 value=f"{cur_aqi}",
                 delta=cur_aqi_cat
             )
 
         with col2:
-            forecast_24h = aqi_values[4]
-            forecast_24h_cat = get_aqi_info(forecast_24h)[0]
+            forecast_tomorrow = aqi_values[4]  # Tomorrow (index 4)
+            forecast_tomorrow_cat = get_aqi_info(forecast_tomorrow)[0]
             st.metric(
-                label="24h Forecast",
-                value=f"{forecast_24h}",
-                delta=forecast_24h_cat
+                label="Tomorrow",
+                value=f"{forecast_tomorrow}",
+                delta=forecast_tomorrow_cat
             )
 
         with col3:
-            forecast_48h = aqi_values[5]
-            forecast_48h_cat = get_aqi_info(forecast_48h)[0]
+            forecast_day2 = aqi_values[5]  # Day after tomorrow (index 5)
+            forecast_day2_cat = get_aqi_info(forecast_day2)[0]
             st.metric(
-                label="48h Forecast",
-                value=f"{forecast_48h}",
-                delta=forecast_48h_cat
+                label="Day +2",
+                value=f"{forecast_day2}",
+                delta=forecast_day2_cat
             )
 
         with col4:
-            forecast_72h = aqi_values[6]
-            forecast_72h_cat = get_aqi_info(forecast_72h)[0]
+            forecast_day3 = aqi_values[6]  # Third day (index 6)
+            forecast_day3_cat = get_aqi_info(forecast_day3)[0]
             st.metric(
-                label="72h Forecast",
-                value=f"{forecast_72h}",
-                delta=forecast_72h_cat
+                label="Day +3",
+                value=f"{forecast_day3}",
+                delta=forecast_day3_cat
             )
 
-        # Visualization
-        st.markdown("### 📈 Trend Analysis")
-        fig = create_aqi_chart(plot_dates, aqi_values, types)
-        st.pyplot(fig, use_container_width=True)
+        # Interactive Plotly Visualization
+        st.markdown("### 📈 Interactive AQI Trend Analysis")
+        fig = create_aqi_chart_plotly(plot_dates, aqi_values, types)
+        st.plotly_chart(fig, use_container_width=True)
 
         # Detailed information tabs
-        tab1, tab2, tab3 = st.tabs(["📅 Forecast Table", "🏥 Health Guidance", "📊 Data Insights"])
+        tab1, tab2, tab3, tab4 = st.tabs(
+            ["📅 Forecast Table", "🏥 Health Guidance", "📊 Data Insights", "📈 Historical Overview"])
 
         with tab1:
             st.markdown("#### Complete 7-Day AQI Report")
-            report_df = pd.DataFrame({
-                "Date": [d.strftime('%Y-%m-%d') for d in plot_dates],
-                "Day": [d.strftime('%A') for d in plot_dates],
-                "AQI": aqi_values,
-                "Category": [get_aqi_info(a)[0] for a in aqi_values],
-                "Type": types
-            })
 
-            # Display the dataframe without styling
+            # Create downloadable dataframe
+            report_df = create_download_dataframe(plot_dates, aqi_values, types, forecast_pm25)
+
+            # Display the dataframe
             st.dataframe(report_df, use_container_width=True, hide_index=True)
+
+            # Download button
+            st.markdown("---")
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                # Convert to CSV
+                csv_buffer = io.StringIO()
+                report_df.to_csv(csv_buffer, index=False)
+                csv_data = csv_buffer.getvalue()
+
+                st.download_button(
+                    label="📥 Download 7-Day Report (CSV)",
+                    data=csv_data,
+                    file_name=f"AQI_7Day_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
 
         with tab2:
             st.markdown("#### Personalized Health Recommendations")
@@ -640,6 +887,43 @@ def main():
             st.markdown("---")
             st.info(f"📅 Last Updated: {present_time.strftime('%Y-%m-%d %H:%M:%S')}")
 
+            # Predicted PM2.5 values
+            st.markdown("---")
+            st.markdown("#### Predicted PM2.5 Concentrations")
+            pred_df = pd.DataFrame({
+                'Forecast Period': ['24 Hours', '48 Hours', '72 Hours'],
+                'PM2.5 (μg/m³)': [f"{pm:.2f}" for pm in forecast_pm25],
+                'AQI': [aqi_values[4], aqi_values[5], aqi_values[6]]
+            })
+            st.dataframe(pred_df, use_container_width=True, hide_index=True)
+
+        with tab4:
+            st.markdown("#### Environmental Parameters - Historical Overview")
+
+            # Create interactive historical chart
+            hist_chart = create_historical_overview_chart(hist_df)
+            st.plotly_chart(hist_chart, use_container_width=True)
+
+            # Summary statistics
+            st.markdown("---")
+            st.markdown("#### Summary Statistics (Past 7 Days)")
+
+            col1, col2 = st.columns(2)
+
+            # Handle both old and new column naming conventions
+            temp_col = 'temp' if 'temp' in hist_df.columns else 'temperature'
+            hum_col = 'rh' if 'rh' in hist_df.columns else 'humidity'
+
+            with col1:
+                st.metric("Avg PM2.5", f"{hist_df['pm2_5'].mean():.2f} μg/m³")
+                if temp_col in hist_df.columns:
+                    st.metric("Avg Temperature", f"{hist_df[temp_col].mean():.1f}°C")
+
+            with col2:
+                st.metric("Avg PM10", f"{hist_df['pm10'].mean():.2f} μg/m³")
+                if hum_col in hist_df.columns:
+                    st.metric("Avg Humidity", f"{hist_df[hum_col].mean():.1f}%")
+
     else:
         # Initial state - show instructions
         st.info("👆 Click the button above to generate the latest AI-powered air quality forecast")
@@ -673,6 +957,25 @@ def main():
                 - Risk assessments
             """)
 
+        st.markdown("---")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("""
+                **📈 Interactive Visualizations**
+                - Plotly-powered charts
+                - Multi-parameter analysis
+                - Historical trends
+            """)
+
+        with col2:
+            st.markdown("""
+                **📥 Export Features**
+                - Download 7-day reports
+                - CSV format
+                - Complete data export
+            """)
 
 if __name__ == "__main__":
     main()

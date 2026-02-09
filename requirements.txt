@@ -10,3 +10,4 @@ lightgbm
 mlflow-skinny
 dagshub
 cloudpickle
+plotly
