@@ -32,7 +32,7 @@ Built for scalability and resilience, the architecture leverages a **serverless 
 *   **Prediction & Visualization:** Notebooks are provided to load the production model, generate forecasts, and validate performance against actuals.
 
 ## Orchestrated MLOps Architecture for AQI Forecasting
-https://github.com/ShehrazSarwar/pearls-aqi-predictor/blob/main/System_Architecture.png
+![System Architecture](System_Architecture.png "AQI Predictor System Architecture")
 
 ## ⚙️ How It Works
 
