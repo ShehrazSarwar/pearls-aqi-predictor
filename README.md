@@ -31,6 +31,9 @@ Built for scalability and resilience, the architecture leverages a **serverless 
     *   A second workflow runs daily to retrain, evaluate, and potentially promote a new model.
 *   **Prediction & Visualization:** Notebooks are provided to load the production model, generate forecasts, and validate performance against actuals.
 
+## Orchestrated MLOps Architecture for AQI Forecasting
+https://github.com/ShehrazSarwar/pearls-aqi-predictor/blob/main/System_Architecture.png
+
 ## ⚙️ How It Works
 
 The project is orchestrated by two main automated pipelines managed by GitHub Actions.
