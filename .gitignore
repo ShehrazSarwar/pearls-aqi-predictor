@@ -12,3 +12,7 @@ anaconda_projects/
 
 # Ignore the entire PyCharm settings folder
 .idea/
+
+
+# Ignore diagram files (draw.io, etc)
+system_diagrams/
