@@ -16,3 +16,6 @@ anaconda_projects/
 
 # Ignore diagram files (draw.io, etc)
 system_diagrams/
+
+.cache.sqlite
+*.sqlite
