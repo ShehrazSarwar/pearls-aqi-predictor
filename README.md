@@ -3,6 +3,8 @@
 
 [![Ask DeepWiki](https://devin.ai/assets/askdeepwiki.png)](https://deepwiki.com/ShehrazSarwar/pearls-aqi-predictor)
 
+[![View Report](https://img.shields.io/badge/📄%20View-Detailed%20Report-blue?style=for-the-badge)](https://github.com/ShehrazSarwar/pearls-aqi-predictor/blob/main/Project%20Report.pdf)
+
 ## Live Dashboard
 The interactive prediction interface is deployed on Hugging Face Spaces. You can view real-time forecasts and model performance here:
 
@@ -69,27 +71,28 @@ pearls-aqi-predictor/
 ├── .github/
 │   └── workflows/
 │       ├── daily_model.yml             # Orchestrates model training and promotion every 24h
-│       └── hourly_data.yml            # Orchestrates feature pipeline runs every hour
+│       └── hourly_data.yml             # Orchestrates feature pipeline runs every hour
 ├── app/
-│   └── aqi_multi_output_model.pkl     # Streamlit app
+│   └── aqi_multi_output_model.pkl      # Streamlit app
 ├── .gitignore
-├── AQI_predict.pdf
+├── Project Report.pdf                  # Detailed Project Report
 ├── automation_scripts/                 # Pipeline entry points for automation
 │   ├── .cache.sqlite
 │   ├── daily_model_pipeline.py         # Entry point for the Daily Training Pipeline
-│   └── hourly_data_pipeline.py        # Entry point for the Hourly Feature Pipeline
+│   └── hourly_data_pipeline.py         # Entry point for the Hourly Feature Pipeline
 ├── models/
 │   └── aqi_multi_output_model.pkl      # Serialized production model artifact
 ├── notebooks/                          # Research and Interpretability
 │   ├── exploratory_data_analysis.ipynb # EDA to identify trends and patterns
 │   └── SHAP_feature_importance.ipynb   # Global and local model explainability
-├── requirements.txt                    # Project dependencies
+├── requirements.txt                    # App dependencies
+├── requirements-ci.txt                 # CI/CD and all other scripts dependencies
 ├── scripts/                            # Core Logic Modules
 │   ├── .cache.sqlite
 │   ├── data_extraction.py              # Logic to fetch raw API data
 │   ├── feature_engineering.py          # Logic for transformations and targets
-│   ├── model_train.py                 # Core model training and evaluation logic
-│   └── promote_model.py               # Champion vs. Challenger promotion logic
+│   ├── model_train.py                  # Core model training and evaluation logic
+│   └── promote_model.py                # Champion vs. Challenger promotion logic
 ├── test_notebooks/
 │   ├── Predict_AQI.ipynb
 │   └── trained_model_validation.ipynb
@@ -150,6 +153,12 @@ You can run the pipelines manually from your local machine.
     python automation_scripts/daily_model_pipeline.py
     ```
 
+3. **Run the application** (starts the web app):
+
+   ```bash
+   streamlit run app/app.py
+   ```
+   
 ## 🏁 Conclusion
 
 This project demonstrates a robust, production-ready MLOps architecture for environmental forecasting. By decoupling data ingestion from model retraining, the system ensures high data availability and continuous model improvement without manual intervention. The integration of **SHAP** for interpretability and **MLflow** for lifecycle management elevates it from a simple script to a professional machine learning service.
