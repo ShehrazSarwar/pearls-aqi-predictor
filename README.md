@@ -168,7 +168,7 @@ This project demonstrates a robust, production-ready MLOps architecture for envi
 
 ## 👤 Author & Credits
 
-Developed with ❤️ by **Shehraz Sarwar Ghouri** as part of the **10Pearls Shine Program 2026 (Cohort 7)** - *Data Science*.
+Developed with ❤️ by **Shehraz Sarwar** as part of the **10Pearls Shine Program 2026 (Cohort 7)** - *Data Science*.
 
 * **LinkedIn:** [Shehraz Sarwar](https://www.linkedin.com/in/shehraz-sarwar-ghouri-321394247/)
 * **Program:** 10Pearls Shine Internship
